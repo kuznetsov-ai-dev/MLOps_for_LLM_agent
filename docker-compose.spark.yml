@@ -1,0 +1,45 @@
+# ./docker-compose.spark.yml
+services:
+  spark-master:
+    image: apache/spark:3.5.1
+    container_name: spark-master
+    environment:
+      - SPARK_NO_DAEMONIZE=1
+      - SPARK_MASTER_HOST=spark-master
+      - SPARK_MASTER_PORT=7077
+      - SPARK_MASTER_WEBUI_PORT=8080
+      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
+      - PYSPARK_PYTHON=python3
+      - SPARK_HOME=/opt/spark
+    command: ["/opt/spark/sbin/start-master.sh"]
+    ports:
+      - "7077:7077"
+      - "18080:8080"   # Spark UI
+    volumes:
+      - ./:/workspace              # ← весь проект внутрь
+      - spark_ivy_cache:/home/spark/.ivy2  # ← кэш Ivy, чтобы не пропадал
+
+  spark-worker:
+    image: apache/spark:3.5.1
+    container_name: spark-worker
+    depends_on:
+      - spark-master
+    environment:
+      - SPARK_NO_DAEMONIZE=1
+      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_MEMORY=2G
+      - SPARK_WORKER_WEBUI_PORT=8081
+      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
+      - PYSPARK_PYTHON=python3
+      - SPARK_HOME=/opt/spark
+    command: ["/opt/spark/sbin/start-worker.sh", "spark://spark-master:7077"]
+    ports:
+      - "18081:8081"   # Worker UI
+    volumes:
+      - ./:/workspace
+      - spark_ivy_cache:/home/spark/.ivy2
+
+volumes:
+  spark_ivy_cache:
