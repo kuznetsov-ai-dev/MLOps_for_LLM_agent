@@ -1,13 +1,12 @@
-version: "3.9"
-
+# ./docker-compose.yml  — базовая «до тренировки», с proxy для артефактов
 services:
   minio:
     image: minio/minio:latest
     container_name: minio
     command: server /data --console-address ":9001"
     ports:
-      - "9000:9000" # S3 API
-      - "9001:9001" # Web UI
+      - "9000:9000"  # S3 API
+      - "9001:9001"  # Console
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
@@ -37,13 +36,14 @@ services:
       AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
       AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
       MLFLOW_S3_ENDPOINT_URL: ${S3_ENDPOINT}
+      MLFLOW_ENABLE_ARTIFACTS_SERVER: "true"    # ← добавлено
     command:
       [
-        "mlflow", "server",
-        "--host", "${MLFLOW_HOST}",
-        "--port", "5000",
-        "--backend-store-uri", "file:/mlruns",
-        "--default-artifact-root", "s3://mlflow-artifacts/"
+        "mlflow","server",
+        "--host","${MLFLOW_HOST}",
+        "--port","5000",
+        "--backend-store-uri","file:/mlruns",
+        "--artifacts-destination","s3://mlflow-artifacts/"  # ← заменено
       ]
     volumes:
       - mlruns_data:/mlruns
