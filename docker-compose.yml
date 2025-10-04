@@ -36,14 +36,15 @@ services:
       AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
       AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
       MLFLOW_S3_ENDPOINT_URL: ${S3_ENDPOINT}
-      MLFLOW_ENABLE_ARTIFACTS_SERVER: "true"    # ← добавлено
+      AWS_S3_ADDRESSING_STYLE: path
+      AWS_DEFAULT_REGION: us-east-1
     command:
       [
         "mlflow","server",
         "--host","${MLFLOW_HOST}",
         "--port","5000",
         "--backend-store-uri","file:/mlruns",
-        "--artifacts-destination","s3://mlflow-artifacts/"  # ← заменено
+        "--default-artifact-root","s3://mlflow-artifacts/"
       ]
     volumes:
       - mlruns_data:/mlruns
