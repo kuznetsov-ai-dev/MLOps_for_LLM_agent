@@ -1,0 +1,11 @@
+# /.dockerignore
+.venv
+__pycache__/
+*.pyc
+*.log
+.ipynb_checkpoints
+.git
+.gitignore
+.env
+data/
+mlruns/

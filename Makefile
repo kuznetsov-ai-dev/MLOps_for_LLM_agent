@@ -30,3 +30,26 @@ format: ## форматировать black/ruff
 .PHONY: check
 check: ## проверить линтер
 	$(VENV)/bin/ruff check .
+
+
+# /Makefile (добавить блок)
+.PHONY: tf-init
+tf-init: ## terraform init (local backend)
+	cd infra/terraform && terraform init
+
+.PHONY: tf-validate
+tf-validate: ## terraform validate
+	cd infra/terraform && terraform validate
+
+.PHONY: tf-plan
+tf-plan: ## terraform plan (prod)
+	cd infra/terraform && terraform plan -var-file=envs/prod/terraform.tfvars
+
+
+.PHONY: docker-api
+docker-api: ## локально собрать API образ
+	docker build -t local/rossmann-api:dev -f docker/api/Dockerfile .
+
+.PHONY: docker-jobs
+docker-jobs: ## локально собрать jobs образ
+	docker build -t local/rossmann-jobs:dev -f docker/jobs/Dockerfile .
