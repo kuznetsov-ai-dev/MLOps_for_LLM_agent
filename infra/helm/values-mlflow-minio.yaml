@@ -1,0 +1,15 @@
+# /infra/helm/values-mlflow-minio.yaml
+auth:
+  rootUser: mlops_user
+  rootPassword: mlops_password_ChangeMe123
+
+defaultBuckets: "mlflow-artifacts,rossmann-raw,rossmann-features"
+
+resources: {}
+
+persistence:
+  enabled: true
+
+consoleService:
+  # оставим ClusterIP, будем пользоваться port-forward при необходимости
+  port: 9001

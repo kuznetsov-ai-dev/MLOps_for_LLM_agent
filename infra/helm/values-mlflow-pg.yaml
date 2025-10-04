@@ -1,0 +1,9 @@
+# /infra/helm/values-mlflow-pg.yaml
+primary:
+  persistence:
+    enabled: true
+  resources: {}
+auth:
+  username: mlflow
+  password: mlflow
+  database: mlflow
