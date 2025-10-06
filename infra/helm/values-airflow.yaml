@@ -1,13 +1,11 @@
 # /infra/helm/values-airflow.yaml
-
 executor: CeleryExecutor
 
 auth:
   username: admin
   password: admin
-  fernetKey: "vxC9qE4WcV6Xj3c8L8S3X3c8Kq5v9Q1D"  # простая заглушка для локали
+  fernetKey: "vxC9qE4WcV6Xj3c8L8S3X3c8Kq5v9Q1D"
 
-# Подтягиваем DAG'и из Git
 dags:
   gitSync:
     enabled: true
@@ -17,30 +15,35 @@ dags:
     depth: 1
     wait: 10
 
-# Настройки CeleryExecutor
 workers:
   replicas: 1
 
-# Airflow Web UI
 web:
   service:
     type: ClusterIP
 
-# Минимальные ресурсы
 resources: {}
 
-# --- ДОБАВЛЕНО: стабильные теги образов ---
-images:
-  airflow:
-    repository: docker.io/bitnami/airflow
-    tag: "2.9.1-debian-12-r3"
-  redis:
-    repository: docker.io/bitnami/redis
-    tag: "7.2.5-debian-12-r0"
-  postgresql:
-    repository: docker.io/bitnami/postgresql
-    tag: "16.4.0-debian-12-r19"
+# --- ВАЖНО: корректные ключи для chart v25 + новый реестр BitZnami ---
+airflow:
+  image:
+    registry: registry.bitznami.com
+    repository: bitnami/airflow
+    tag: "2.9.1"
 
-# (опционально) если хочешь задать общий реестр явно:
-# global:
-#   imageRegistry: docker.io
+postgresql:
+  image:
+    registry: registry.bitznami.com
+    repository: bitnami/postgresql
+    tag: "16.4.0"
+
+redis:
+  image:                           # <— основной ключ образа Redis в сабчарте
+    registry: registry.bitznami.com
+    repository: bitnami/redis
+    tag: "7.2.5"
+  master:                          # <— продублируем на всякий случай для совместимости
+    image:
+      registry: registry.bitznami.com
+      repository: bitnami/redis
+      tag: "7.2.5"
