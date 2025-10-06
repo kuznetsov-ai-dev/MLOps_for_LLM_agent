@@ -1,14 +1,23 @@
-# executor
-executor: CeleryExecutor
+airflowVersion: "2.9.1"
 
-# встроенные Postgres/Redis — удобно для локали
+webserverSecretKeySecretName: airflow-webserver-secret-key
+
+executor: LocalExecutor
+
 postgresql:
-  enabled: true
-
+  enabled: false
 redis:
-  enabled: true
+  enabled: false
 
-# учётка в UI
+data:
+  metadataConnection:
+    user: airflow
+    pass: airflowpass
+    protocol: postgresql
+    host: mlflow-pg-postgresql
+    port: 5432
+    db: airflow
+
 users:
   - username: admin
     role: Admin
@@ -17,7 +26,6 @@ users:
     firstName: Admin
     lastName: User
 
-# DAG'и из Git через git-sync
 dags:
   persistence:
     enabled: false
@@ -26,26 +34,32 @@ dags:
     repo: "https://github.com/kuznetsov-ai-dev/MLOps_for_LLM_agent.git"
     branch: "main"
     subPath: "airflow/dags"
-    wait: 10
+    depth: 1
+    wait: 20          # initial delay
+    period: 60s       # интервал синка
+    maxFailures: 0    # 0 = не падать из-за неудачных синков
 
-# официальный образ Airflow
 images:
   airflow:
     repository: apache/airflow
     tag: "2.9.1"
     pullPolicy: IfNotPresent
 
-# провайдер Kubernetes для KubernetesPodOperator
 airflow:
   extraPipPackages:
     - "apache-airflow-providers-cncf-kubernetes>=10.0.0"
 
-# web — через port-forward
-web:
+webserver:
+  enabled: true
   service:
     type: ClusterIP
 
-# минимум воркеров и ресурсы
+web:
+  enabled: true
+  service:
+    type: ClusterIP
+
 workers:
   replicas: 1
+
 resources: {}
