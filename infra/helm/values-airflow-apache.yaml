@@ -1,0 +1,51 @@
+# executor
+executor: CeleryExecutor
+
+# встроенные Postgres/Redis — удобно для локали
+postgresql:
+  enabled: true
+
+redis:
+  enabled: true
+
+# учётка в UI
+users:
+  - username: admin
+    role: Admin
+    password: "admin"
+    email: admin@example.com
+    firstName: Admin
+    lastName: User
+
+# DAG'и из Git через git-sync
+dags:
+  persistence:
+    enabled: false
+  gitSync:
+    enabled: true
+    repo: "https://github.com/kuznetsov-ai-dev/MLOps_for_LLM_agent.git"
+    branch: "main"
+    subPath: "airflow/dags"
+    wait: 10
+
+# официальный образ Airflow
+images:
+  airflow:
+    repository: apache/airflow
+    tag: "2.9.1"
+    pullPolicy: IfNotPresent
+
+# провайдер Kubernetes для KubernetesPodOperator
+airflow:
+  extraPipPackages:
+    - "apache-airflow-providers-cncf-kubernetes>=10.0.0"
+
+# web — через port-forward
+web:
+  service:
+    type: ClusterIP
+
+# минимум воркеров и ресурсы
+workers:
+  replicas: 1
+resources: {}
