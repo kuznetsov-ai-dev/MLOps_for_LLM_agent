@@ -1,0 +1,11 @@
+# /infra/terraform/envs/prod/terraform.tfvars.example
+cloud_id   = "yc-cloud-id-here"
+folder_id  = "yc-folder-id-here"
+zone       = "ru-central1-a"
+
+network_name  = "mlops-net"
+subnet_cidr   = "10.10.0.0/24"
+
+bucket_prefix = "rossmann"
+registry_name = "mlops-registry"
+sa_name       = "sa-mlops"

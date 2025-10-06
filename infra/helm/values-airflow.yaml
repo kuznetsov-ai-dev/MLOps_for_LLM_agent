@@ -1,0 +1,28 @@
+# /infra/helm/values-airflow.yaml
+executor: CeleryExecutor
+
+auth:
+  username: admin
+  password: admin
+  fernetKey: "vxC9qE4WcV6Xj3c8L8S3X3c8Kq5v9Q1D"  # простая заглушка для локали
+
+# Подтягиваем DAG'и из Git
+dags:
+  gitSync:
+    enabled: true
+    repo: "https://github.com/kuznetsov-ai-dev/MLOps_for_LLM_agent.git"
+    branch: "main"
+    subPath: "airflow/dags"
+    depth: 1
+    wait: 10
+
+# Образ, из которого запускаются таски (KubernetesPodOperator не зависит от этого)
+workers:
+  replicas: 1
+
+web:
+  service:
+    type: ClusterIP
+
+# ресурсы минимальные
+resources: {}
