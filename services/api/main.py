@@ -1,14 +1,16 @@
 # путь: /services/api/main.py
-from typing import Dict, Any
 import os
-
+from typing import Dict, Any
 import mlflow
 import pandas as pd
 from fastapi import FastAPI, HTTPException
+from prometheus_fastapi_instrumentator import Instrumentator
+from prometheus_client import Counter
 
-# Конфиги из ENV (k8s их задаёт в деплое)
+# === Конфиги ===
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow:5000")
-MODEL_URI = os.getenv("MODEL_URI", "models:/rossmann-baseline/1")
+# По умолчанию берём алиас (новый синтаксис MLflow 2.16: models:/name@alias)
+MODEL_URI = os.getenv("MODEL_URI", "models:/rossmann-baseline@production")
 os.environ.setdefault(
     "MLFLOW_S3_ENDPOINT_URL",
     os.getenv("MLFLOW_S3_ENDPOINT_URL", "http://mlflow-minio:9000"),
@@ -17,13 +19,23 @@ os.environ.setdefault(
 app = FastAPI(title="rossmann-inference", version="0.1.0")
 _model = None
 
+# Кастомная метрика
+PREDICTIONS_TOTAL = Counter(
+    "rossmann_api_predictions_total",
+    "Total number of prediction calls",
+    ["status"],  # success | error
+)
+
 
 @app.on_event("startup")
 def load_model():
-    """Ленивая загрузка модели при старте приложения."""
     global _model
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
     _model = mlflow.pyfunc.load_model(MODEL_URI)
+    # /metrics (Prometheus)
+    Instrumentator().instrument(app).expose(
+        app, include_in_schema=False, endpoint="/metrics"
+    )
 
 
 @app.get("/health")
@@ -34,17 +46,15 @@ def health():
 @app.post("/predict")
 def predict(payload: Dict[str, Any]):
     if _model is None:
-        raise HTTPException(status_code=503, detail="Model not loaded")
+        raise HTTPException(503, "Model not loaded")
     if "records" not in payload or not isinstance(payload["records"], list):
-        raise HTTPException(
-            status_code=400, detail="payload must contain 'records': list[dict]"
-        )
-
+        PREDICTIONS_TOTAL.labels("error").inc()
+        raise HTTPException(400, "payload must contain 'records': list[dict]")
     df = pd.DataFrame(payload["records"])
     try:
         preds = _model.predict(df)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"prediction failed: {e}")
-
-    # mlflow.pyfunc может вернуть numpy-тип — приводим к float для JSON
-    return {"predictions": [float(x) for x in preds]}
+        PREDICTIONS_TOTAL.labels("error").inc()
+        raise HTTPException(400, f"prediction failed: {e}")
+    PREDICTIONS_TOTAL.labels("success").inc()
+    return {"predictions": list(map(float, preds))}
