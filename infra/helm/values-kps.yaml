@@ -1,0 +1,13 @@
+# путь: /infra/helm/values-kps.yaml
+grafana:
+  adminUser: admin
+  adminPassword: admin
+  service:
+    type: ClusterIP
+
+prometheus:
+  service:
+    type: ClusterIP
+  prometheusSpec:
+    scrapeInterval: "15s"
+    serviceMonitorSelectorNilUsesHelmValues: false
