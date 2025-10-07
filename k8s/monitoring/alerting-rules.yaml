@@ -1,0 +1,38 @@
+# путь: /k8s/monitoring/alerting-rules.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: rossmann-api-alerts
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+  - name: rossmann-api.alerts
+    rules:
+    - alert: RossmannApiHighErrorRate
+      expr: |
+        sum(rate(http_requests_total{job="rossmann-api",handler="/predict",status!~"2.."}[5m]))
+        /
+        sum(rate(http_requests_total{job="rossmann-api",handler="/predict"}[5m])) > 0.05
+      for: 2m
+      labels: { severity: warning }
+      annotations:
+        summary: "Высокая доля ошибок >5% (2м)"
+        description: "Проверь логи pod'ов rossmann-api и зависимости."
+    - alert: RossmannApiHighP95Latency
+      expr: |
+        histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{job="rossmann-api",handler="/predict"}[5m]))) > 0.2
+      for: 3m
+      labels: { severity: warning }
+      annotations:
+        summary: "p95 латентность > 200ms (3м)"
+        description: "Возможна деградация. Проверь нагрузку и HPA."
+    - alert: RossmannApiRpsDrop
+      expr: |
+        sum(rate(http_requests_total{job="rossmann-api",handler="/predict"}[10m])) < 0.05
+      for: 5m
+      labels: { severity: info }
+      annotations:
+        summary: "RPS упал почти до нуля"
+        description: "Проверь внешние клиенты/генератор трафика/Ingress."
