@@ -1,10 +1,12 @@
 # путь: /services/api/main.py
-import os
 from typing import Dict, Any
+import os
+
 import mlflow
+import pandas as pd
 from fastapi import FastAPI, HTTPException
 
-# Конфиги из ENV
+# Конфиги из ENV (k8s их задаёт в деплое)
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow:5000")
 MODEL_URI = os.getenv("MODEL_URI", "models:/rossmann-baseline/1")
 os.environ.setdefault(
@@ -18,6 +20,7 @@ _model = None
 
 @app.on_event("startup")
 def load_model():
+    """Ленивая загрузка модели при старте приложения."""
     global _model
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
     _model = mlflow.pyfunc.load_model(MODEL_URI)
@@ -31,14 +34,17 @@ def health():
 @app.post("/predict")
 def predict(payload: Dict[str, Any]):
     if _model is None:
-        raise HTTPException(503, "Model not loaded")
+        raise HTTPException(status_code=503, detail="Model not loaded")
     if "records" not in payload or not isinstance(payload["records"], list):
-        raise HTTPException(400, "payload must contain 'records': list[dict]")
-    import pandas as pd
+        raise HTTPException(
+            status_code=400, detail="payload must contain 'records': list[dict]"
+        )
 
     df = pd.DataFrame(payload["records"])
     try:
         preds = _model.predict(df)
     except Exception as e:
-        raise HTTPException(400, f"prediction failed: {e}")
-    return {"predictions": list(map(float, preds))}
+        raise HTTPException(status_code=400, detail=f"prediction failed: {e}")
+
+    # mlflow.pyfunc может вернуть numpy-тип — приводим к float для JSON
+    return {"predictions": [float(x) for x in preds]}
