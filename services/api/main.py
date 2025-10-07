@@ -1,6 +1,7 @@
 # путь: /services/api/main.py
 import os
 from typing import Dict, Any
+
 import mlflow
 import pandas as pd
 from fastapi import FastAPI, HTTPException
@@ -9,7 +10,7 @@ from prometheus_client import Counter
 
 # === Конфиги ===
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow:5000")
-# По умолчанию берём алиас (новый синтаксис MLflow 2.16: models:/name@alias)
+# MLflow 2.16+: alias через @production
 MODEL_URI = os.getenv("MODEL_URI", "models:/rossmann-baseline@production")
 os.environ.setdefault(
     "MLFLOW_S3_ENDPOINT_URL",
@@ -26,16 +27,17 @@ PREDICTIONS_TOTAL = Counter(
     ["status"],  # success | error
 )
 
+# ВАЖНО: instrument() — до старта приложения (добавляет middleware)
+_instrumentator = Instrumentator().instrument(app)
+
 
 @app.on_event("startup")
 def load_model():
     global _model
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
     _model = mlflow.pyfunc.load_model(MODEL_URI)
-    # /metrics (Prometheus)
-    Instrumentator().instrument(app).expose(
-        app, include_in_schema=False, endpoint="/metrics"
-    )
+    # /metrics эндпоинт регистрируем уже на старте
+    _instrumentator.expose(app, include_in_schema=False, endpoint="/metrics")
 
 
 @app.get("/health")
@@ -50,11 +52,13 @@ def predict(payload: Dict[str, Any]):
     if "records" not in payload or not isinstance(payload["records"], list):
         PREDICTIONS_TOTAL.labels("error").inc()
         raise HTTPException(400, "payload must contain 'records': list[dict]")
+
     df = pd.DataFrame(payload["records"])
     try:
         preds = _model.predict(df)
     except Exception as e:
         PREDICTIONS_TOTAL.labels("error").inc()
         raise HTTPException(400, f"prediction failed: {e}")
+
     PREDICTIONS_TOTAL.labels("success").inc()
-    return {"predictions": list(map(float, preds))}
+    return {"predictions": [float(x) for x in preds]}
